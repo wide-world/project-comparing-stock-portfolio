@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset='UTF-8'>
+	<meta http-equiv='X-UA-Compatible' content='IE=edge'>
+	<meta name='viewport' content='width=device-width, initial-scale=1'>
+  <link href='../static/src/images/stock-icon.png' rel="icon">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
+        crossorigin="anonymous"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <title>Create Portfolio</title>
+
+  <style>
+    #chartdiv {
+      width: 100%;
+      height: 600px;
+    }
+    
+    section {
+      width: 80%;
+      padding: 1.5rem 1.6rem;
+      box-shadow: 0 0 1rem rgba(0, 0, 0, .05);  
+      border-radius: 5px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: #fff;
+      margin-top: 2rem;
+    }    
+    
+    body {
+      background: #f7f8fc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    p {
+      opacity: .8;
+      font-size: 15px;
+    }
+
+    @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      outline: none;
+      word-break: break-all;
+      font-family: Pretendard;
+    }
+
+    #next-btn {
+      float: right;
+      text-align: center;
+    }
+
+    #new-name {
+      width: 30%;
+      /* text-align: center; */
+    }
+	</style>
+
+</head>
+<body>
+	<!-- HTML -->
+  <section>
+    <div class="mt-2 mb-2">
+      <button type="button" class="btn btn-outline-primary" id="before-btn">이전</button>
+      <button type="button" class="btn btn-outline-primary" id="next-btn">생성</button>
+    </div>
+    <hr class="my-3">
+    <div class="d-flex">
+      <input type="text" class="form-control me-2" id="new-name" placeholder="등록할 종목 이름을 입력하세요." autocomplete="off">
+      <button class="btn btn-outline-success" id="confirm-btn" type="button">중복 확인</button>
+    </div>
+    <div id="chartdiv"></div>
+  </section>
+	
+	<!-- Resources -->
+	<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database-compat.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+    crossorigin="anonymous">
+  </script>
+
+
+	<!-- Chart code -->
+	<script>	
+		// Your web app's Firebase configuration
+		const firebaseConfig = {
+			apiKey: "AIzaSyCNXJrWedeiAN_nnR-hkCendonMOMG_YZ4",
+			authDomain: "kis-project-29909.firebaseapp.com",
+			projectId: "kis-project-29909",
+			storageBucket: "kis-project-29909.appspot.com",
+			messagingSenderId: "497737048002",
+			appId: "1:497737048002:web:4f79613b7c75541873c05b",
+			databaseURL: "https://kis-project-29909-default-rtdb.firebaseio.com/"
+		};
+
+		// Initialize Firebase
+		firebase.initializeApp(firebaseConfig);
+
+    const $before = document.getElementById("before-btn");
+    const $next = document.getElementById("next-btn");
+    const $confirm = document.getElementById("confirm-btn");
+    const $newName = document.getElementById("new-name");
+
+    let pieData = [];
+    let pfData = [];
+    let tickerData = [];
+
+    $before.addEventListener("click",()=>{
+      window.location.href = `/s2`;
+    });   
+    
+    $next.addEventListener("click",()=>{   
+      var ranNum = Math.floor(Math.random() * 100000);
+      var pfName = 'P' + ranNum.toString();
+      var pfLen = pfData.length;
+      
+      if (ranNum < 10000) {
+        while (ranNum < 10000) {
+          ranNum = Math.floor(Math.random() * 100000);
+          pfName = 'P' + ranNum.toString();
+        }
+      }
+
+      for (var i = 1; i <= pfLen; i++) {
+        if (pfData[i - 1]['id'] == pfName) {
+          ranNum = Math.floor(Math.random() * 100000);
+          pfName = 'P' + ranNum.toString();
+        }
+
+        if (i === pfLen) {
+          firebase.database().ref('tickers_pf/' + i.toString()).update({'id': pfName});
+          firebase.database().ref('tickers_pf/' + i.toString()).update({'name': $newName.value});
+          firebase.database().ref('tickers_pf/' + i.toString()).update({'data': pieData});
+        }
+      }
+      
+      const saveData = [];
+      const fetchPromises = [];
+
+      for (let i = 0; i < pieData.length; i++) {
+        const tempData = [];
+        const ticker = pieData[i]['id'];
+        const fetchPromise = fetch(`/api/${ticker}`)
+          .then((res) => res.json())
+          .then((get_data) => {
+            let setVal = 10000 / get_data[0]['close'];
+            let setVol = 10000 / get_data[0]['volume'];
+
+            for (let j = 0; j < Object.keys(get_data).length - 2; j++) {
+              const tempList = {};
+
+              tempList['open'] = Math.round(get_data[j]['open'] * setVal);
+              tempList['high'] = Math.round(get_data[j]['high'] * setVal);
+              tempList['low'] = Math.round(get_data[j]['low'] * setVal);
+              tempList['close'] = Math.round(get_data[j]['close'] * setVal);
+              tempList['volume'] = Math.round(get_data[j]['volume'] * setVal * setVol);
+              tempList['date'] = get_data[j]['date'];
+
+              tempData.push(tempList);
+            }
+          });
+
+        fetchPromises.push(fetchPromise);
+        saveData.push(tempData);
+      }
+
+      Promise.all(fetchPromises).then(() => {
+        let maxDateList = [];
+        let minDateList = [];
+
+        for (let i = 0; i < saveData.length; i++) {
+          maxDateList.push(saveData[i][saveData[i].length - 1]['date']);
+          minDateList.push(saveData[i][0]['date']);
+        }
+
+        const maxDate = Math.min.apply(null, maxDateList);
+        const minDate = Math.max.apply(null, minDateList);
+        const fixData = [];
+        const lastData = [];
+
+        for (let i = 0; i < saveData.length; i++) {
+          const tempData = [];
+
+          for (let j = 0; j < saveData[i].length; j++) {
+            if ((saveData[i][j]['date'] < minDate) || (saveData[i][j]['date'] > maxDate)) continue;
+            
+            const tempList = {};
+
+            tempList['open'] = Math.round(saveData[i][j]['open'] * (pieData[i]['value'] / 100));
+            tempList['high'] = Math.round(saveData[i][j]['high'] * (pieData[i]['value'] / 100));
+            tempList['low'] = Math.round(saveData[i][j]['low'] * (pieData[i]['value'] / 100));
+            tempList['close'] = Math.round(saveData[i][j]['close'] * (pieData[i]['value'] / 100));
+            tempList['volume'] = Math.round(saveData[i][j]['volume'] * (pieData[i]['value'] / 100));
+            tempList['date'] = saveData[i][j]['date'];
+
+            tempData.push(tempList);
+          }
+          fixData.push(tempData);
+        }
+
+        for (var i = 0; i < fixData[0].length; i++) {
+          var tempOpen = 0;
+          var tempHigh = 0;
+          var tempLow = 0;
+          var tempClose = 0;
+          var tempVolume = 0;
+
+          for (var j = 0; j < fixData.length; j++) {
+            tempOpen += fixData[j][i]['open'];
+            tempHigh += fixData[j][i]['high'];
+            tempLow += fixData[j][i]['low'];
+            tempClose += fixData[j][i]['close'];
+            tempVolume += fixData[j][i]['volume'];
+          }
+
+          const dictionary = {
+            'open': tempOpen,
+            'high': tempHigh,
+            'low': tempLow,
+            'close': tempClose,
+            'volume': tempVolume,
+            'date': fixData[0][i]['date']
+          };
+
+          lastData.push(dictionary);
+        }
+
+        var json = {};
+        for (var i = 0 ; i < lastData.length; i++) {
+            json[i] = lastData[i];
+        }
+        json['id'] = pfName;
+        json['name'] = $newName.value;
+        firebase.database().ref('tickers/' + tickerData.length.toString()).update({'id': pfName});
+        firebase.database().ref('tickers/' + tickerData.length.toString()).update({'label': $newName.value});
+        firebase.database().ref('tickers/' + tickerData.length.toString()).update({'subLabel': pfName});
+        firebase.database().ref('data/' + pfName).update(json);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+
+      setTimeout(() => {
+        window.location.href = `/portfolio`;     
+      }, 3000);
+    });
+
+    $confirm.addEventListener("click",()=>{
+      for (var i = 1; i < pfData.length; i++) { 
+        if ($newName.value === pfData[i]['name']) {
+          alert('이미 존재하는 종목명입니다. 다시 입력해주세요.');
+          $newName.value = '';
+          return;
+        }
+      }
+      alert('생성 가능한 종목명입니다.');
+    });
+
+    am5.ready(function() {
+      // Create root element
+      // https://www.amcharts.com/docs/v5/getting-started/#Root_element
+      var root = am5.Root.new("chartdiv");
+      
+      // Set themes
+      // https://www.amcharts.com/docs/v5/concepts/themes/
+      root.setThemes([
+        am5themes_Animated.new(root)
+      ]);
+      
+      // Create chart
+      // https://www.amcharts.com/docs/v5/charts/percent-charts/pie-chart/
+      var chart = root.container.children.push(
+        am5percent.PieChart.new(root, {
+          endAngle: 270
+        })
+      );
+      
+      // Create series
+      // https://www.amcharts.com/docs/v5/charts/percent-charts/pie-chart/#Series
+      var series = chart.series.push(
+        am5percent.PieSeries.new(root, {
+          valueField: "value",
+          categoryField: "category",
+          endAngle: 270
+        })
+      );
+      
+      series.states.create("hidden", {
+        endAngle: -90
+      });
+
+      function convertData(data) {
+        const value = data;
+        const dataList = [];
+        Object.keys(value).forEach(key=>{
+          dataList.push(value[key])
+        })
+        const result = dataList.map(d=>{
+          return {
+            id:d.id,
+            category:d.name,
+            value:parseInt(d.ratio)
+          }
+        })
+        return result;
+      }
+
+      fetch(`api/list`).then((res)=>{return res.json()}).then((get_data)=>{
+        tickerData = get_data;
+      })
+
+      fetch(`api/pflist`).then((res)=>{return res.json()}).then((get_data)=>{
+        pfData = get_data;
+      })
+
+      fetch(`api/select`).then((res)=>{return res.json()}).then((get_data)=>{
+        pieData = convertData(get_data);
+        pieData.shift();
+
+        // Set data
+        // https://www.amcharts.com/docs/v5/charts/percent-charts/pie-chart/#Setting_data
+        series.data.setAll(pieData);
+        
+        series.appear(1000, 100); 
+      })
+        
+    }); // end am5.ready()
+	</script>
+</body>
+</html>
